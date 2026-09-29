@@ -70,27 +70,33 @@ exports.editLayout = (0, catchAsyncErrors_1.CatchAsyncError)(async (req, res, ne
     try {
         const { type } = req.body;
         if (type === "Banner") {
-            const bannerData = await layout_model_1.default.findOne({ type: "Banner" });
             const { image, title, subTitle } = req.body;
-            const data = image.startsWith("https")
-                ? bannerData
-                : await cloudinary_1.default.v2.uploader.upload(image, {
+            if (typeof image !== "string" || !image.trim()) {
+                return next(new ErrorHandler_1.default("Banner image is required", 400));
+            }
+            const bannerData = await layout_model_1.default.findOne({ type: "Banner" });
+            let publicId;
+            let imageUrl;
+            if (bannerData?.banner?.image?.url === image) {
+                publicId = bannerData.banner.image.public_id;
+                imageUrl = bannerData.banner.image.url;
+            }
+            else {
+                const uploadedImage = await cloudinary_1.default.v2.uploader.upload(image, {
                     folder: "layout",
                 });
+                publicId = uploadedImage.public_id;
+                imageUrl = uploadedImage.secure_url;
+            }
             const banner = {
-                type: "Banner",
                 image: {
-                    public_id: image.startsWith("https")
-                        ? bannerData.banner.image.public_id
-                        : data?.public_id,
-                    url: image.startsWith("https")
-                        ? bannerData.banner.image.url
-                        : data?.secure_url,
+                    public_id: publicId,
+                    url: imageUrl,
                 },
                 title,
                 subTitle,
             };
-            await layout_model_1.default.findByIdAndUpdate(bannerData._id, { banner });
+            await layout_model_1.default.findOneAndUpdate({ type: "Banner" }, { type: "Banner", banner }, { new: true, upsert: true, runValidators: true });
         }
         if (type === "FAQ") {
             const { faq } = req.body;

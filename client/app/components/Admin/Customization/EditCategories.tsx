@@ -18,11 +18,10 @@ const EditCategories = (props: Props) => {
   const [editLayout, { isSuccess: layoutSuccess, error }] =
     useEditLayoutMutation();
   const [categories, setCategories] = useState<any>([]);
+  const originalCategories = data?.layout?.categories ?? [];
 
   useEffect(() => {
-    if (data) {
-      setCategories(data.layout.categories);
-    }
+    setCategories(data?.layout?.categories ?? []);
     if (layoutSuccess) {
         refetch();
       toast.success("Categories updated successfully");
@@ -43,7 +42,7 @@ const EditCategories = (props: Props) => {
   };
 
   const newCategoriesHandler = () => {
-    if (categories[categories.length - 1].title === "") {
+    if (categories[categories.length - 1]?.title === "") {
       toast.error("Category title cannot be empty");
     } else {
       setCategories((prevCategory: any) => [...prevCategory, { title: "" }]);
@@ -63,7 +62,7 @@ const EditCategories = (props: Props) => {
 
   const editCategoriesHandler = async () => {
     if (
-      !areCategoriesUnchanged(data.layout.categories, categories) &&
+      !areCategoriesUnchanged(originalCategories, categories) &&
       !isAnyCategoryTitleEmpty(categories)
     ) {
       await editLayout({
@@ -118,14 +117,14 @@ const EditCategories = (props: Props) => {
               styles.button
             } !w-[100px] !min-h-[40px] !h-[40px] dark:text-white text-black bg-[#cccccc34] 
             ${
-              areCategoriesUnchanged(data.layout.categories, categories) ||
+              areCategoriesUnchanged(originalCategories, categories) ||
               isAnyCategoryTitleEmpty(categories)
                 ? "!cursor-not-allowed"
                 : "!cursor-pointer !bg-[#42d383]"
             }
             !rounded absolute bottom-12 right-12`}
             onClick={
-              areCategoriesUnchanged(data.layout.categories, categories) ||
+              areCategoriesUnchanged(originalCategories, categories) ||
               isAnyCategoryTitleEmpty(categories)
                 ? () => null
                 : editCategoriesHandler

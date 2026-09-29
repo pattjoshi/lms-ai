@@ -74,31 +74,39 @@ export const editLayout = CatchAsyncError(
     try {
       const { type } = req.body;
       if (type === "Banner") {
-        const bannerData: any = await LayoutModel.findOne({ type: "Banner" });
-
         const { image, title, subTitle } = req.body;
+        if (typeof image !== "string" || !image.trim()) {
+          return next(new ErrorHandler("Banner image is required", 400));
+        }
 
-        const data = image.startsWith("https")
-          ? bannerData
-          : await cloudinary.v2.uploader.upload(image, {
-              folder: "layout",
-            });
+        const bannerData = await LayoutModel.findOne({ type: "Banner" });
+        let publicId: string;
+        let imageUrl: string;
+        if (bannerData?.banner?.image?.url === image) {
+          publicId = bannerData.banner.image.public_id;
+          imageUrl = bannerData.banner.image.url;
+        } else {
+          const uploadedImage = await cloudinary.v2.uploader.upload(image, {
+            folder: "layout",
+          });
+          publicId = uploadedImage.public_id;
+          imageUrl = uploadedImage.secure_url;
+        }
 
         const banner = {
-          type: "Banner",
           image: {
-            public_id: image.startsWith("https")
-              ? bannerData.banner.image.public_id
-              : data?.public_id,
-            url: image.startsWith("https")
-              ? bannerData.banner.image.url
-              : data?.secure_url,
+            public_id: publicId,
+            url: imageUrl,
           },
           title,
           subTitle,
         };
 
-        await LayoutModel.findByIdAndUpdate(bannerData._id, { banner });
+        await LayoutModel.findOneAndUpdate(
+          { type: "Banner" },
+          { type: "Banner", banner },
+          { new: true, upsert: true, runValidators: true }
+        );
       }
 
       if (type === "FAQ") {
